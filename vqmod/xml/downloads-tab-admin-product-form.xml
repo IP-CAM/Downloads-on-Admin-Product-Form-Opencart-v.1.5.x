@@ -1,0 +1,315 @@
+<modification>
+	<id>Downloads Tab on Admin Product Form for OpenCart</id>
+	<version>1.0.1</version>
+	<vqmver>2.4.0</vqmver>
+	<author>garudacrafts</author>
+	<notes>Description: adds Digital File Downloads tab to Admin Product Form</notes>
+		
+	<file name="admin/controller/catalog/product.php">
+		<operation>
+			<search position="after"><![CDATA[
+			$this->data['tab_design'] = $this->language->get('tab_design');
+			]]></search>
+			<add><![CDATA[
+			// START digital downloads tab module
+			$this->data['tab_download'] = $this->language->get('tab_download');
+			$this->data['entry_download_name'] = $this->language->get('entry_download_name');
+			$this->data['entry_download_filename'] = $this->language->get('entry_download_filename');
+			$this->data['entry_download_mask'] = $this->language->get('entry_download_mask');
+			$this->data['entry_download_remaining'] = $this->language->get('entry_download_remaining');
+			$this->data['entry_download_update'] = $this->language->get('entry_download_update');
+			$this->data['text_digital_download_list'] = $this->language->get('text_digital_download_list');
+			$this->data['text_digital_download_new'] = $this->language->get('text_digital_download_new');
+			$this->data['text_wait'] = $this->language->get('text_wait');
+			$this->data['button_upload_digital_download'] = $this->language->get('button_upload_digital_download');
+			$this->data['button_add_digital_download'] = $this->language->get('button_add_digital_download');
+			$this->data['success'] = $this->language->get('text_download_new_success');
+			$this->data['failure'] = $this->language->get('text_download_new_failure');
+			// END digital downloads tab module
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace" offset="4"><![CDATA[
+			if (!isset($this->request->get['product_id'])) {
+			]]></search>
+			<add><![CDATA[
+			if (!isset($this->request->get['product_id'])) {
+				$this->data['action'] = $this->url->link('catalog/product/insert', 'token=' . $this->session->data['token'] . $url, 'SSL');
+				$this->data['product_id'] = 0; // digital downloads tab module
+			} else {
+				$this->data['action'] = $this->url->link('catalog/product/update', 'token=' . $this->session->data['token'] . '&product_id=' . $this->request->get['product_id'] . $url, 'SSL');
+				$this->data['product_id'] = $this->request->get['product_id']; // digital downloads tab module
+			}
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace" offset="21"><![CDATA[
+			$this->load->model('catalog/download');
+			]]></search>
+			<add><![CDATA[
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			function autocomplete() {
+			]]></search>
+			<add><![CDATA[
+			// START digital downloads tab module
+			public function digital_download() {
+				$this->data['error'] = '';
+				$this->data['success'] = '';
+					
+				if (!$this->user->hasPermission('modify', 'catalog/product')) {
+					$this->data['error'] = $this->language->get('error_permission');
+				} 
+				
+				$this->language->load('catalog/product');
+
+				$this->load->model('catalog/download');
+						
+				if ($this->request->get['product_id']) {
+					$product_id = (int)$this->request->get['product_id'];
+				} else {
+					$product_id = 0;
+				}
+
+				if (($this->request->server['REQUEST_METHOD'] == 'POST')) {
+					foreach ($this->request->post['download_description'] as $language_id => $value) {
+						if ((utf8_strlen($value['name']) < 3) || (utf8_strlen($value['name']) > 64)) {
+							$this->data['error'] = $this->language->get('error_download_name');
+						}
+					}	
+
+					if ((utf8_strlen($this->request->post['download_filename']) < 3) || (utf8_strlen($this->request->post['download_filename']) > 128)) {
+						$this->data['error'] = $this->language->get('error_download_filename');
+					}	
+					
+					if (!file_exists(DIR_DOWNLOAD . $this->request->post['download_filename']) && !is_file(DIR_DOWNLOAD . $this->request->post['download_filename'])) {
+						$this->data['error'] = $this->language->get('error_download_exists');
+					}
+							
+					if ((utf8_strlen($this->request->post['download_mask']) < 3) || (utf8_strlen($this->request->post['download_mask']) > 128)) {
+						$this->data['error'] = $this->language->get('error_download_mask');
+					}
+					
+					if (!$this->data['error']) {
+						$download_data = array(
+							'download_description' 	=> $this->request->post['download_description'],
+							'filename' 				=> $this->request->post['download_filename'],
+							'mask' 					=> $this->request->post['download_mask'],
+							'remaining' 			=> $this->request->post['download_remaining']
+						);
+						
+						$this->model_catalog_download->addProductDownload($download_data, $product_id);
+						
+						$this->data['success'] = $this->language->get('text_download_new_success');
+					}
+				}
+				
+				$this->data['entry_digital_download'] = $this->language->get('entry_digital_download');
+				$this->data['digital_downloads'] = array();
+
+				$results = $this->model_catalog_download->getDownloads();
+
+				foreach ($results as $result) {
+					$this->data['digital_downloads'][] = array(
+						'download_id'	=> $result['download_id'],
+						'name'   		=> $result['name']
+					);
+				}
+				
+				if ($product_id > 0) {
+					$this->load->model('catalog/product');
+					$this->data['product_downloads'] = $this->model_catalog_product->getProductDownloads($product_id);
+				} else {
+					$this->data['product_downloads'] = array();
+				}
+							
+				$this->template = 'catalog/product_digital_downloads.tpl';
+				$this->response->setOutput($this->render());
+			}
+			// END digital downloads tab module
+			]]></add>
+		</operation>	
+	</file>
+		
+	<file name="admin/model/catalog/download.php">
+		<operation>
+			<search position="before" offset="1"><![CDATA[
+			function getDownloads(
+			]]></search>
+			<add><![CDATA[
+			// START digital downloads tab module
+			public function addProductDownload($data = array(), $product_id = 0) {
+				$this->db->query("INSERT INTO " . DB_PREFIX . "download SET filename = '" . $this->db->escape($data['filename']) . "', mask = '" . $this->db->escape($data['mask']) . "', remaining = '" . (int)$data['remaining'] . "', date_added = NOW()");
+
+				$download_id = $this->db->getLastId();
+
+				if ($product_id > 0) {
+					$this->db->query("INSERT INTO " . DB_PREFIX . "product_to_download SET product_id = '" . (int)$product_id . "', download_id = '" . (int)$download_id . "'");
+				}
+				
+				foreach ($data['download_description'] as $language_id => $value) {
+					$this->db->query("INSERT INTO " . DB_PREFIX . "download_description SET download_id = '" . (int)$download_id . "', language_id = '" . (int)$language_id . "', name = '" . $this->db->escape($value['name']) . "'");
+				}
+			}			
+			// END digital downloads tab module			
+			]]></add>
+		</operation>
+	</file>
+
+	<file name="admin/view/template/catalog/product_form.tpl">	
+		<operation>
+			<search position="replace"><![CDATA[
+			<a href="#tab-data"><?php echo $tab_data; ?></a>
+			]]></search>
+			<add><![CDATA[
+			<a href="#tab-data"><?php echo $tab_data; ?></a><a href="#tab-download"><?php echo $tab_download; ?></a>
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			<div id="tab-links"
+			]]></search>
+			<add><![CDATA[
+			<!-- START digital downloads tab module -->
+			<div id="tab-download">
+				<div id="digital-downloads"></div>
+				<div id="download-tabs" class="htabs"><a href="#download-tab-new"><?php echo $text_digital_download_new; ?></a></div>
+				<div id="download-tab-new">
+					<table class="form">
+					  <tr>
+						<td><?php echo $entry_download_name; ?></td>
+						<td><?php foreach ($languages as $language) { ?>
+						  <input type="text" name="download_description[<?php echo $language['language_id']; ?>][name]" value="" />
+						  <img src="view/image/flags/<?php echo $language['image']; ?>" title="<?php echo $language['name']; ?>" /><br />
+						  <?php } ?></td>
+					  </tr>
+					  <tr>
+						<td><?php echo $entry_download_filename; ?></td>
+						<td><input type="text" name="download_filename" value="" /> <a id="button-upload" class="button"><?php echo $button_upload_digital_download; ?></a></td>
+					  </tr>
+					  <tr>
+						<td><?php echo $entry_download_mask; ?></td>
+						<td><input type="text" name="download_mask" value="" /></td>
+					  </tr>
+					  <tr>
+						<td><?php echo $entry_download_remaining; ?></td>
+						<td><input type="text" name="download_remaining" value="1" size="6" /></td>
+					  </tr>
+					  <tr>
+						  <td colspan="2"><a id="button-digital-download" class="button"><?php echo $button_add_digital_download; ?></a></td>
+					  </tr>
+					</table>
+				</div>
+			</div>
+			<!-- END digital downloads tab module -->
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace" offset="13"><![CDATA[
+			<td><?php echo $entry_download; ?></td>
+			]]></search>
+			<add><![CDATA[
+			<td colspan="2">&nbsp;</td>
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			<?php echo $footer; ?>
+			]]></search>
+			<add><![CDATA[		
+			<!-- START digital downloads tab module -->
+			<script type="text/javascript" src="view/javascript/jquery/ajaxupload.js"></script> 
+			<script type="text/javascript"><!--
+			$('#download-tabs a').tabs(); 
+
+			$('#digital-downloads').load('index.php?route=catalog/product/digital_download&token=<?php echo $token; ?>&product_id=<?php echo $product_id; ?>');
+
+			new AjaxUpload('#button-upload', {
+				action: 'index.php?route=catalog/download/upload&token=<?php echo $token; ?>',
+				name: 'file',
+				autoSubmit: true,
+				responseType: 'json',
+				onSubmit: function(file, extension) {
+					$('#button-upload').after('<img src="view/image/loading.gif" class="loading" style="padding-left: 5px;" />');
+					$('#button-upload').attr('disabled', true);
+				},
+				onComplete: function(file, json) {
+					$('#button-upload').attr('disabled', false);
+					
+					if (json['success']) {
+						alert(json['success']);				
+						$('input[name=\'download_filename\']').attr('value', json['filename']);
+						$('input[name=\'download_mask\']').attr('value', json['mask']);
+					}
+					
+					if (json['error']) {
+						alert(json['error']);
+					}
+					
+					$('.loading').remove();	
+				}
+			});
+
+			$('#button-digital-download').live('click', function() {		
+				download_description = '';
+				<?php foreach ($languages as $language) { ?>
+					download_description += '&download_description[<?php echo $language['language_id']; ?>][name]=' + encodeURIComponent($('input[name=\'download_description[<?php echo $language['language_id']; ?>][name]\']').val());
+				<?php } ?>
+			    
+				$.ajax({
+					url: 'index.php?route=catalog/product/digital_download&token=<?php echo $token; ?>&product_id=<?php echo $product_id; ?>',
+					type: 'post',
+					dataType: 'html',
+					data: 'download_filename=' + encodeURIComponent($('input[name=\'download_filename\']').val()) + '&download_mask=' + encodeURIComponent($('input[name=\'download_mask\']').val()) + '&download_remaining=' + encodeURIComponent($('input[name=\'download_remaining\']').val()) + download_description,
+					beforeSend: function() {
+						$('.success, .warning').remove();
+						$('#button-digital-download').attr('disabled', true);
+						$('#download-new').prepend('<div class="attention"><img src="view/image/loading.gif" alt="" /> <?php echo $text_wait; ?></div>');
+					},
+					complete: function() {
+						$('#button-digital-download').attr('disabled', false);
+						$('.attention').remove();
+					},
+					success: function(html) {
+						$('#digital-downloads').html(html);
+					}
+				});
+			});
+			//--></script>
+			<!-- END digital downloads tab module -->
+			]]></add>
+		</operation>
+	</file>
+		
+	<file name="admin/language/english/catalog/product.php">
+		<operation>
+			<search position="bottom" offset="2"></search>
+			<add><![CDATA[
+			// START digital downloads tab module
+			$_['tab_download']             					= 'Download';
+			$_['entry_digital_download']       				= 'Downloads:';
+			$_['entry_download_name']       				= 'Product Download Name:';
+			$_['entry_download_filename']   				= 'Filename:<br /><span class="help">Filename and the mask should be different.</span>';
+			$_['entry_download_mask']       				= 'Mask:';
+			$_['entry_download_remaining']  				= 'Total Downloads Allowed:';
+			$_['entry_download_update']     				= 'Push to Previous Customers:<br /><span class="help">Check this to update previously purchased versions as well.</span>';
+			$_['text_digital_download_list']				= 'Digital Downloads';
+			$_['text_digital_download_new']  				= 'Upload New File';
+			$_['text_download_new_success']        			= 'New Digital Download File successfully added!';
+			$_['text_download_new_failure']        			= 'Failure: New Digital Download File not added!';
+			$_['button_upload_digital_download']   			= 'Upload File';
+			$_['button_add_digital_download']   			= 'Add New';
+			$_['text_wait']            						= 'Please Wait!';
+			$_['error_download_name']       				= 'Name must be between 3 and 64 characters!';
+			$_['error_download_filename']   				= 'Filename must be between 3 and 128 characters!';
+			$_['error_download_exists']     				= 'File does not exist!';
+			$_['error_download_mask']       				= 'Mask must be between 3 and 128 characters!';
+			$_['error_download_filetype']   				= 'Invalid file type!';
+			// END digital downloads tab module
+			]]></add>
+		</operation>
+	</file>
+			
+</modification>
