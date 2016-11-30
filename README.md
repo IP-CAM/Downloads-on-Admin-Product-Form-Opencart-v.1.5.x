@@ -1,5 +1,5 @@
 Downloads on Admin Product Form for OpenCart
-vQmod extension
+vQmod XML extension
 
 ---
 
@@ -13,8 +13,6 @@ How: In the default OpenCart install, the Admin User must first upload all digit
 
 More: Downloads list refreshes automatically via AJAX when new Download added (no full page refresh required); includes validation on new file fields; displays success & error messages;
 
-Looking for the ability to download digital files ("Downloads") on the Admin Order Info page? See "Admin Order Downloads Links" extension at http://www.opencart.com/index.php?route=extension/extension/info&extension_id=17377.
-
 ---
 
 INSTALLATION
@@ -23,9 +21,5 @@ Upload 'admin' and 'vqmod' directories to your web server root. Requires vqmod i
 
 ***IMPORTANT***
 OpenCart version 1.5.3-1.5.4: FIND and REPLACE the following lines of code in /vqmod/xml/downloads-tab-admin-product-form.xml
-- FIND "<search position="replace" offset="21"><![CDATA[" and REPLACE WITH "<search position="replace" offset="10"><![CDATA[" on LINE 46
-- FIND "<search position="replace" offset="13"><![CDATA[" and REPLACE WITH "<search position="replace" offset="15"><![CDATA[" on LINE 210
-
----
-
-http://www.opencart.com/index.php?route=extension/extension/info&extension_id=17378
+- FIND `<search position="replace" offset="21"><![CDATA[` and REPLACE WITH `<search position="replace" offset="10"><![CDATA[` on LINE 46
+- FIND `<search position="replace" offset="13"><![CDATA[` and REPLACE WITH `<search position="replace" offset="15"><![CDATA[` on LINE 210
